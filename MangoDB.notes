@@ -1,0 +1,226 @@
+
+                start server     : mongod (called as mongo demon)
+                start            : mongo
+                createDB         : use <dbname>
+                dropDB           : use <dbname>
+                                   db.dropDatabase()
+                dropCollection   : db.<collection name>.drop() 
+                stats            : db.stats()
+                createColl       : db.createCollection("<name of collection>",{validator:{$jsonSchema:{bsonType:"object",required:["title","text",creator,comments]}}})
+                                        check validation.js file //required must be required
+CRUD operations:
+        JSON VS BSON(binary json converison by drivers!)
+
+Commands:
+        show dbs
+        use <dbname>     (need not be present but only be created once we enter table and values )
+        show collections (gives all the tables it have (collections))
+        db.flightData    (makes a collection/table with that name)
+        db.flightData.insertOne({
+        "departureAirport" : "MUC",
+        "arrivalAirport"   : "SFO",
+        "aircraft"         : "Airbus A380",
+        "distance"         : 12000,
+        "intercontinental" : true
+
+        })
+        db.flightData.find().pretty()  (return all entries)
+        We can give our own id as:
+                    db.flightData.insertOne({
+                            "departureAirport" : "MUC",
+                            "arrivalAirport"   : "SFO",
+                            _id:"txl-lher-1"
+                    }) it makes _id as object created id if we use the same id for next json object it throws duplicate key error
+        insertMany()
+        db.flightData.find().forEach((passengerData)=>{printjson(passengerData)})
+        
+        db.flightData.deleteOne/deleteMany({departureAirport:"TXL"}) //finds first document with accepting case
+        db.flightData.updateOne({distance:1200},{$set:{marker:"delete"}}) //if marker exist update it or else it creates it
+
+
+        !Read:
+            find(filter,options)
+            findOne(filter,options)  //gives first matching one
+            find({"satus.details.response":"Max Schwarzmuller"})//note when u use . dont forget to wrap with quotations
+            !projection:
+                .find({},{name:1,_id:0,})
+            !embeddeded Documents:
+                .updateMany({},{$set:{status:{description:"on-time",lastUpdated:"1 hour ago"}}})
+                !Arrays:
+                    .updateOne({"departureAirport" : "LHR"},{$set:{distance:distance*10}})
+                    .updateOne({"departureAirport" : "LHR"},{$set:{pilots:[{first_name: "vijay"},{first_name:"kumar"}]}})
+                    .updateOne({"departureAirport" : "LHR"},{$set:{pilots:[ "vijay","kumar"]}})
+
+        !update:
+            updateOne(filter,data,options)
+            updateMany(filter,data,options)
+            replaceOne(filter,data,options)
+        !delete:
+            deleteOne(filter,options)
+            deleteMany(filter,options)
+
+
+
+Conditions:
+        CHECK >:
+            find({distance:{$gt:10000}})  //$gt means greater than
+                            $gte          //greater or equal than
+        !update vs updateOne:
+            update dont net $set but it created new id for it
+            use replaceOne insted of update
+        *it* is used to  for next tieration
+
+
+        !using and and or in mongodb(note:itsucks)
+            db.contributor.find({$and: [{$or: [{branch: "ECE"}, {joiningYear: 2017}]}, 
+                                {$or: [{"personal.state": "UP"}, 
+                                    {"personal.age": 25}]}]}).pretty()
+
+-= Schema or no schema =-
+        chaos  => sql WORLD
+
+
+        -= Data types =-
+
+            Text,Boolean,Number(NumbeeInt(32) datasize:29,NumberLong(int64),NumberDecimal(for high precision )),ObjectId,(ISODate,TimeStamp),Embedded Documents,Arrays
+            everything is stored in 64 bit floating number 
+            default  number : 64 bit floating
+            typeof db.companies.findOne().employees
+
+== Embedded vs reference ==
+        If there is strong one to one relation ship go for embeddeded rrefernce increases steps and storage for ids 
+        var dsid = db.patients.findOne().diseaseSummary
+        but reference can be used even for one to many if it may reach 16mb limit fr whole document (not 16mb for nested)
+
+Many to many:
+         db.question.Threads.insertOne({creator:"Max",question:"How does tha all work?",answers:["q1A1","q1A2"]})
+         db.answers.Threads.insertMany([{_id:"q1A1",text:"It works like that."},{_id:"q1A2",text:"thanks!"}])
+
+Aggregate:
+    //note:All fields must be with quotations
+    customers.aggregate([
+        {$lookup:{
+            from:"books",
+            localField:"favBooks",
+            foreignField:"_id"
+            as : "favBookData"
+        }
+        }
+    ])
+Schema validation:
+        validation level                                                            validation action
+    !strict! => All insert & update                                             !error! => throws error and deny insert/update 
+    !moderate!=> all insert & update                                            !warn! =>log warning but proceed
+                to correct documents       
+
+    !how to change validation?
+    collmod = collection modifier
+
+        db.runCommand({collMod:"posts",validator.js})
+        check validator-2.js 
+        warn is written in log file and saved in system
+
+working with shell and driver 
+
+backgroud servie:
+    mongod --fork --logpath /users/....log.log     //it starts mongodb as child process server runs but as a background process since it working background it cant write errors so have to write somewhere so uses logpath
+    !note!: it wont work for windows for it to work instal as service ans then:
+        open cmd as admin
+        net start MongoDB
+        !how to quit background service?
+    mac/linux                                 windows 
+        show dbs                                same as linux/mac 
+        use admin                               we can also use:
+        db.shutdownServer()                     net stop MongoDB 
+    *oRDERED INSERT*:
+        insert method is ordered but not rollback like trasnsaction 
+         db.hobbies.insertMany([{},{},{}],{ordered:true})  //ordered:true is default 
+      !UNORDERED INSERT!:                                   ,{ordered:false}) // insert all leaving the error part 
+            *nOTE ITSD NOT TRANSACTION*
+    *Write concern*
+        insertOne ={w:1,j :underifned}   here w means how many times write needed and j is journal [Todo]
+            this journal files holds what todo if the server goes down after getting up it does what in todo 
+            note adding db in db is harder bcz of indexex writing in journal is faster
+            {w:1,j :true}  
+            {w:1,wtimeout:200j :true} //the timeframe given to server to report a success for this write before cancel it
+         db.persons.insertOne({name:"Chrissy",age:41},{writeConcern:{w:0}}  this means u sent request and didnt wait for server to register
+                            -super fast but  dont know whether its succeeded or not
+        db.persons.insertOne({name:"Chri",age:41},{writeConcern:{w:1}})   acknowledge true gives id
+        db.persons.insertOne({name:"Mikel",age:53},{writeConcern:{w:1,j:true}})    //false or undefinede is default
+                                                                                -- slower since it first adds to journal,!higher security
+        db.persons.insertOne({name:"Mikel",age:53},{writeConcern:{w:1,j:true,wtimeout:1}})       - throws error if it cant write in time here 1ms                         
+
+-= DELETE =-
+    $exists 
+        db.users.deleteMany({totalAge:{$exists:false},isSporty:true})       //totalAge:null cant be deleted!
+    db.users.deleteMany({})  //delete all rows but sb and collections exist  
+    db.users.drop()       //drops collection
+    db.dropDatabase()  //drops entire database
+-= Update =- 
+  instead of directluy update the values ($set )  we can increment values by using $inc 
+    db.users.updateOne({name:"Michel"},{$inc:{age:2},$set:{isSporty:false}}) //age will be incremented by2 or -1 
+            !if we use $inc and $set both at once on same fields it throws error 
+    *Useful operators*:
+        $min,$max,$mul
+        min/max 
+        db.users.updateOne({name:"chris"},{$min:{age:35}}) //returns min of age itself or 35
+        db.users.updateOne({name:"chris"},{$mul:{age:1.1}})  //multiples the age with given number
+        $Unset // to remove fields
+        db.users.updateMany({isSporty:false},{$unset:{phone:""}})  //it removes phone from all false sporty
+    //renaming
+        db.users.updateMany({},{$rename:{age:"totalAge"}})
+
+-= Upsert =- (update and insert (default:false))
+    if file exist update or else create one u dont need to do twice updateOne and insertOne
+    db.users.updateOne({name:"Maria"},{$set:{age:29,hobbies:[{titles:"Good food"},{frequency:3}],isSporty:true}},{upsert:true})
+
+-- Updating matched array elements --
+    [x] db.users.find({$and:[{"hobbies.title":"Sports"},{"hobbies.frequency":{$gte:3}}]})
+
+    !wrong ! if the document is like below:
+         hobbies:[
+             {
+                 "title":"Sports",
+                 "frequency":2
+             },
+             {
+                 "title":"Yoga",
+                 "frequency":3
+             }
+         ] this document will alsoe be matched so we have to use elements
+
+    *correct*:
+    [√] db.users.find({hobbies:{$eleMatch:{title:"Sports",frequency:{$gte:3}}}})
+          this helps check inside embedded document!
+
+    If we want to update inside the  sports frequency without changing Yoga or adding new one 
+    [√] db.users.updateMany({"hobbies":{$eleMatch:{title:"Sports",frequency:{$gte:3}}}},{$set:{"hobbies.$.highFrequency":true}})
+      !here ! #$# helps to go into document where elematch occured      
+
+    [!] db.users.updateMany({"hobbies.frequency":{$gt:2},{$set:{"hobbies.$.goodFrequency":true}}}) 
+        #dangerous irrespective of documents adds first field that satisfy this condition    
+        only works for first
+    if we want to do it for all
+    use []
+    [√] db.users.updateMany({totalAge:{$gt:30}},{$inc:{"hobbies.$[].frequency":-1}}) 
+
+using el checking for in each document!:
+    db.users.updateMany({"hobbies.frquency":{$gt:2}},{$set:{"hobbies.$[el].goodFrequency":true}},{arrayFilters:[{"el.frequency":{$gt:2}}]})
+    here arrayfilter need not be equal to filter which u used  to get emenet ie..updateMany({___},)
+Push:
+    to add new element into document 
+      db.users.updateOne({name:"Maria"},{$push:{hobbies:{title:"Sports",frequency:2}}}) //pushes instead of update
+    !update more!
+        db.users.updateOne({name:"Maria"},{$push:{hobbies:{$each:[{title:"Good wine",frequency:3},{title:"hiking",frequency:2}],$sort:{frequency:-1},$slice:1}}})
+        // -1 for desc ,slice how many u  want to add d
+    remove data if u push more?
+Pull:
+        db.users.updateOne({name:"Maria"},{$pull:{hobbies:{title:"Hiking"}}}) //will remove document
+Pop:
+        to remove the last element:
+        db.users.updateOne({name:"Chris},{$pop:{hobbies:1}})
+        //here -1 is for first element 1 for last element
+AddtoSet:
+        functions same as push but only adds unique values (like *put method*)
+        db.users.updateOne({name:"Maria"},{$addToSet:{hobbies:{title:"Hiking",frequency:2}}})
+        //how many times u run the same thing it adds only once 

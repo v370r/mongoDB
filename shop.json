@@ -1,0 +1,38 @@
+[
+    {
+        "name": "A book",
+        "price": 12.99
+    },
+    {
+        "title": "T-shirt",
+        "seller": {
+            "name": "Max",
+            "age": 29
+        }
+    },
+    {
+        "comment": "------------------ companies ----------------------"
+    },
+    {
+        "name": "Fresh Apples Inc",
+        "isStartup": true,
+        "employees": 33,
+        "funding": 99494944646,
+        "details": {
+            "ceo": "Mark Super"
+        },
+        "tags": [
+            "super",
+            "perfect"
+        ],
+        "foundingDate":new Date(),
+        "insertedAt":new Timestamp()
+    },
+
+    {
+        "comment": "------------------ Many to many  ----------------------"
+    },
+
+    {"creator":"Max","question":"How does tha all work?","answers":""},
+    {"title":"My first post","text": "This is my first post,I hope you like it","tags":["news","tech"]}
+]
